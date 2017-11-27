@@ -17,7 +17,7 @@ already unlocked.
 Installation
 ------------
 
-The ``crypto-drive-manager`` program is written in Python and is available on
+The `crypto-drive-manager` program is written in Python and is available on
 PyPI_ which means installation should be as simple as::
 
   $ pip install crypto-drive-manager
@@ -28,12 +28,12 @@ system wide) and I have no intention of getting into that discussion here, so
 if this intimidates you then read up on your options before returning to these
 instructions ;-).
 
-Getting started
----------------
+Configuration
+-------------
 
-The ``crypto-drive-manager`` program doesn't have a configuration file because
+The `crypto-drive-manager` program doesn't have a configuration file because
 it looks at your system configuration to infer what it should do. You need to
-create or change ``/etc/crypttab`` in order to enable ``crypto-drive-manager``.
+create or change ``/etc/crypttab`` in order to enable `crypto-drive-manager`.
 As an example here's my ``/etc/crypttab`` file::
 
   # <target name>  <source device>                            <key file>                 <options>
@@ -51,10 +51,10 @@ by entering pass phrases for each of them :-). Even though my root device
 devices on my root device doesn't feel right because the key files will be
 exposed at all times.
 
-You tell ``crypto-drive-manager`` to manage an encrypted device by setting the
+You tell `crypto-drive-manager` to manage an encrypted device by setting the
 key file (the third field in ``/etc/crypttab``) to a file located under the
-mount point used by ``crypto-drive-manager`` ( ``/mnt/keys`` by default). Every
-time you run ``crypto-drive-manager`` it parses ``/etc/crypttab`` to find and
+mount point used by `crypto-drive-manager` ( ``/mnt/keys`` by default). Every
+time you run `crypto-drive-manager` it parses ``/etc/crypttab`` to find and
 unlock managed devices. The ``UUID=...`` definition in ``/etc/crypttab`` is
 used to check if the physical device exists in ``/dev/disk/by-uuid``. Because
 of this a source device definition with a ``UUID=...`` value is required.
@@ -70,10 +70,45 @@ devices. Once the encrypted devices have been unlocked the virtual keys device
 is unmounted and the keys are no longer available (except in memory, which
 cannot be avoided to the best of my knowledge).
 
+Usage
+-----
+
+.. A DRY solution to avoid duplication of the `crypto-drive-manager --help' text:
+..
+.. [[[cog
+.. from humanfriendly.usage import inject_usage
+.. inject_usage('crypto_drive_manager.cli')
+.. ]]]
+
+**Usage:** `crypto-drive-manager [OPTIONS]`
+
+Safely, quickly and conveniently unlock an unlimited number of LUKS encrypted
+devices using a single pass phrase.
+
+**Supported options:**
+
+.. csv-table::
+   :header: Option, Description
+   :widths: 30, 70
+
+
+   "``-i``, ``--image-file=PATH``","Set the pathname of the file that contains the encrypted disk image with
+   key files (defaults to ``/root/encryption-keys.img``)."
+   "``-n``, ``--mapper-name=NAME``","Set the mapper device name for the encrypted disk with key files so that
+   the device for the drive with key files will be created as
+   ``/dev/mapper/NAME`` (defaults to ``encryption-keys``)."
+   "``-m``, ``--mount-point=PATH``","Set the pathname of the mount point for the encrypted disk with key files
+   (defaults to /mnt/keys)."
+   "``-v``, ``--verbose``",Make more noise (increase logging verbosity).
+   "``-q``, ``--quiet``",Make less noise (decrease logging verbosity).
+   "``-h``, ``--help``",Show this message and exit.
+
+.. [[[end]]]
+
 Contact
 -------
 
-The latest version of ``crypto-drive-manager`` is available on PyPI_ and
+The latest version of `crypto-drive-manager` is available on PyPI_ and
 GitHub_. For bug reports please create an issue on GitHub_. If you have
 questions, suggestions, etc. feel free to send me an e-mail at
 `peter@peterodding.com`_.
@@ -83,7 +118,7 @@ License
 
 This software is licensed under the `MIT license`_.
 
-© 2015 Peter Odding.
+© 2017 Peter Odding.
 
 .. External references:
 .. _GitHub: https://github.com/xolox/python-crypto-drive-manager

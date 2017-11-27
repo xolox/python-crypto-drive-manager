@@ -3,57 +3,90 @@
 # Setup script for the `crypto-drive-manager' package.
 #
 # Author: Peter Odding <peter@peterodding.com>
-# Last Change: February 21, 2015
+# Last Change: November 27, 2017
 # URL: https://github.com/xolox/python-crypto-drive-manager
 
+"""
+Setup script for the `crypto-drive-manager` package.
+
+**python setup.py install**
+  Install from the working directory into the current Python environment.
+
+**python setup.py sdist**
+  Build a source distribution archive.
+
+**python setup.py bdist_wheel**
+  Build a wheel distribution archive.
+"""
+
+# Standard library modules.
+import codecs
 import os
 import re
-import setuptools
 
-# Find the directory where the source distribution was unpacked.
-source_directory = os.path.dirname(os.path.abspath(__file__))
+# De-facto standard solution for Python packaging.
+from setuptools import find_packages, setup
 
-# Find the current version.
-module = os.path.join(source_directory, 'crypto_drive_manager', '__init__.py')
-for line in open(module, 'r'):
-    match = re.match(r'^__version__\s*=\s*["\']([^"\']+)["\']$', line)
-    if match:
-        version_string = match.group(1)
-        break
-else:
-    raise Exception("Failed to extract version from %s!" % module)
 
-# Fill in the long description (for the benefit of PyPI)
-# with the contents of README.rst (rendered by GitHub).
-readme_file = os.path.join(source_directory, 'README.rst')
-readme_text = open(readme_file).read()
+def get_contents(*args):
+    """Get the contents of a file relative to the source distribution directory."""
+    with codecs.open(get_absolute_path(*args), 'r', 'UTF-8') as handle:
+        return handle.read()
 
-# Fill in the installation requirements based on requirements.txt.
-requirements_file = os.path.join(source_directory, 'requirements.txt')
-requirements = list(filter(None, (re.sub('^\s*#.*|\s#.*', '', line).strip() for line in open(requirements_file))))
 
-setuptools.setup(
-    name='crypto-drive-manager',
-    version=version_string,
-    description="Unlock all your encrypted drives with one pass phrase.",
-    long_description=readme_text,
-    url='https://github.com/xolox/python-crypto-drive-manager',
-    author='Peter Odding',
-    author_email='peter@peterodding.com',
-    packages=setuptools.find_packages(),
-    entry_points=dict(console_scripts=['crypto-drive-manager = crypto_drive_manager.cli:main']),
-    install_requires=requirements,
-    classifiers=[
-        'Development Status :: 5 - Production/Stable',
-        'Environment :: Console',
-        'Intended Audience :: Information Technology',
-        'Intended Audience :: System Administrators',
-        'License :: OSI Approved :: MIT License',
-        'Operating System :: POSIX :: Linux',
-        'Programming Language :: Python :: 2.6',
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3.4',
-        'Topic :: Security :: Cryptography',
-        'Topic :: System :: Filesystems',
-        'Topic :: System :: Systems Administration',
-        'Topic :: Utilities'])
+def get_version(*args):
+    """Extract the version number from a Python module."""
+    contents = get_contents(*args)
+    metadata = dict(re.findall('__([a-z]+)__ = [\'"]([^\'"]+)', contents))
+    return metadata['version']
+
+
+def get_requirements(*args):
+    """Get requirements from pip requirement files."""
+    requirements = set()
+    with open(get_absolute_path(*args)) as handle:
+        for line in handle:
+            # Strip comments.
+            line = re.sub(r'^#.*|\s#.*', '', line)
+            # Ignore empty lines
+            if line and not line.isspace():
+                requirements.add(re.sub(r'\s+', '', line))
+    return sorted(requirements)
+
+
+def get_absolute_path(*args):
+    """Transform relative pathnames into absolute pathnames."""
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), *args)
+
+
+setup(name='crypto-drive-manager',
+      version=get_version('crypto_drive_manager', '__init__.py'),
+      description="Unlock all your encrypted drives with one pass phrase.",
+      long_description=get_contents('README.rst'),
+      url='https://github.com/xolox/python-crypto-drive-manager',
+      author="Peter Odding",
+      author_email='peter@peterodding.com',
+      packages=find_packages(),
+      entry_points=dict(console_scripts=[
+          'crypto-drive-manager = crypto_drive_manager.cli:main',
+      ]),
+      install_requires=get_requirements('requirements.txt'),
+      classifiers=[
+          'Development Status :: 5 - Production/Stable',
+          'Environment :: Console',
+          'Intended Audience :: Information Technology',
+          'Intended Audience :: System Administrators',
+          'License :: OSI Approved :: MIT License',
+          'Operating System :: POSIX :: Linux',
+          'Programming Language :: Python',
+          'Programming Language :: Python :: 2',
+          'Programming Language :: Python :: 2.6',
+          'Programming Language :: Python :: 2.7',
+          'Programming Language :: Python :: 3',
+          'Programming Language :: Python :: 3.4',
+          'Topic :: Security :: Cryptography',
+          'Topic :: System :: Filesystems',
+          'Topic :: System :: Systems Administration',
+          'Topic :: Terminals',
+          'Topic :: Utilities',
+      ])
