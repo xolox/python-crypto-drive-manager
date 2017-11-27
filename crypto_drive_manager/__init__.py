@@ -1,10 +1,10 @@
 # Python API for crypto-drive-manager.
 #
 # Author: Peter Odding <peter@peterodding.com>
-# Last Change: February 21, 2015
+# Last Change: November 27, 2017
 # URL: https://github.com/xolox/python-crypto-drive-manager
 
-__version__ = '1.0'
+"""Python API for `crypto-drive-manager`."""
 
 # Standard library modules.
 import functools
@@ -16,9 +16,13 @@ import re
 from executor import execute
 from humanfriendly import pluralize, Timer
 
+__version__ = '1.0'
+"""Semi-standard module versioning."""
+
 # Initialize a logger for this module.
 logger = logging.getLogger(__name__)
 execute = functools.partial(execute, logger=logger)
+
 
 def initialize_keys_device(image_file, mapper_name, mount_point):
     """
@@ -77,6 +81,7 @@ def initialize_keys_device(image_file, mapper_name, mount_point):
             if os.path.isfile(image_file):
                 os.unlink(image_file)
 
+
 def activate_encrypted_drive(mapper_name, physical_device, keys_directory, reset=False):
     """
     Initialize and activate an encrypted volume.
@@ -111,6 +116,7 @@ def activate_encrypted_drive(mapper_name, physical_device, keys_directory, reset
             logger.warning("Failed to mount %s!", mapper_device)
             return False
     return True
+
 
 def find_managed_drives(keys_directory):
     """
@@ -149,6 +155,7 @@ def find_managed_drives(keys_directory):
                         properties['physical_device'] = os.path.realpath(disk_by_uuid)
                 yield properties
 
+
 def drive_needs_mounting(mapper_device):
     """
     Check if an encrypted drive can be mounted directly.
@@ -167,6 +174,7 @@ def drive_needs_mounting(mapper_device):
     logger.debug("Drive %s not yet mounted.", mapper_device)
     return True
 
+
 def find_mounted_devices():
     """
     Find the mounted devices.
@@ -175,6 +183,7 @@ def find_mounted_devices():
     """
     for tokens in parse_tab_file('/etc/mtab'):
         yield tokens[0]
+
 
 def parse_tab_file(pathname):
     """
@@ -195,12 +204,10 @@ def parse_tab_file(pathname):
             if tokens:
                 yield tokens
 
+
 class finalizer(object):
 
-    """
-    Context manager that unconditionally runs an external command when the
-    :py:keyword:`with` statement ends.
-    """
+    """Context manager to run a command when the :keyword:`with` statement ends."""
 
     def __init__(self, *args, **kw):
         """
@@ -213,6 +220,7 @@ class finalizer(object):
         self.kw = kw
 
     def __enter__(self):
+        """Enable use as a context manager."""
         pass
 
     def __exit__(self, *args):
