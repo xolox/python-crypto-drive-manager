@@ -93,14 +93,14 @@ devices using a single pass phrase.
 
 
    "``-i``, ``--image-file=PATH``","Set the pathname of the file that contains the encrypted disk image with
-   key files (defaults to ``/root/encryption-keys.img``)."
+   key files (defaults to '/root/encryption-keys.img')."
    "``-n``, ``--mapper-name=NAME``","Set the mapper device name for the encrypted disk with key files so that
    the device for the drive with key files will be created as
-   ``/dev/mapper/NAME`` (defaults to ``encryption-keys``)."
+   '/dev/mapper/NAME' (defaults to 'encryption-keys')."
    "``-m``, ``--mount-point=PATH``","Set the pathname of the mount point for the encrypted disk with key files
-   (defaults to /mnt/keys)."
-   "``-v``, ``--verbose``",Make more noise (increase logging verbosity).
-   "``-q``, ``--quiet``",Make less noise (decrease logging verbosity).
+   (defaults to '/mnt/keys')."
+   "``-v``, ``--verbose``",Increase logging verbosity (can be repeated).
+   "``-q``, ``--quiet``",Decrease logging verbosity (can be repeated).
    "``-h``, ``--help``",Show this message and exit.
 
 .. [[[end]]]
