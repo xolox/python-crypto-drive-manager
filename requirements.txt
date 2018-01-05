@@ -1,6 +1,7 @@
 # Python packages required by crypto-drive-manager.
 
-coloredlogs >= 3.3
+coloredlogs >= 7.3.1
 executor >= 1.6
 humanfriendly >= 1.36
 linux-utils >= 0.3
+verboselogs >= 1.7
