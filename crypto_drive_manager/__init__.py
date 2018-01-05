@@ -1,7 +1,7 @@
 # Python API for crypto-drive-manager.
 #
 # Author: Peter Odding <peter@peterodding.com>
-# Last Change: November 27, 2017
+# Last Change: January 5, 2018
 # URL: https://github.com/xolox/python-crypto-drive-manager
 
 """Python API for `crypto-drive-manager`."""
@@ -130,10 +130,30 @@ def find_managed_drives(keys_directory):
     :returns: A generator of :class:`~linux_utils.crypttab.EncryptedFileSystemEntry` objects.
     """
     for entry in parse_crypttab():
-        if 'luks' in entry.options and entry.key_file:
-            common_prefix = os.path.commonprefix([keys_directory, entry.key_file])
-            if common_prefix == keys_directory:
-                yield entry
+        if ('luks' in entry.options and entry.key_file and
+                match_prefix(entry.key_file, keys_directory)):
+            yield entry
+
+
+def match_prefix(pathname, prefix):
+    """
+    Check if a pathname has the expected prefix.
+
+    :param pathname: The pathname of a file or directory (a string).
+    :param prefix: The pathname of a directory expected to contain
+                   the given `pathname` (a string).
+    :returns: :data:`True` if `pathname` starts with `prefix`,
+              :data:`False` otherwise.
+    """
+    # Normalize the input values to enable string comparison.
+    pathname = os.path.normpath(pathname)
+    prefix = os.path.normpath(prefix)
+    # Make sure the prefix ends in a slash so that we take the boundaries
+    # between path segments into account in the string comparison below.
+    if not prefix.endswith(os.path.sep):
+        prefix += os.path.sep
+    # String comparison should work now? (famous last words)
+    return pathname.startswith(prefix)
 
 
 def drive_needs_mounting(mapper_device):
