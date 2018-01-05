@@ -187,12 +187,13 @@ class finalizer(object):
         :param kw: Any keyword arguments for py:func:`execute()`.
         """
         self.args = args
+        self.enabled = kw.pop('enabled', True)
         self.kw = kw
 
     def __enter__(self):
         """Enable use as a context manager."""
-        pass
 
     def __exit__(self, *args):
         """Unconditionally run the previously specified external command."""
-        execute(*self.args, **self.kw)
+        if self.enabled:
+            execute(*self.args, **self.kw)
