@@ -18,7 +18,7 @@ from linux_utils.fstab import find_mounted_filesystems
 from linux_utils.luks import cryptdisks_start
 from verboselogs import VerboseLogger
 
-__version__ = '1.0'
+__version__ = '2.0'
 """Semi-standard module versioning."""
 
 # Initialize a logger for this module.
