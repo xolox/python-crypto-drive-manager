@@ -12,7 +12,7 @@ import os
 
 # External dependencies.
 from executor import execute
-from humanfriendly import Timer, compact, pluralize
+from humanfriendly import Timer, compact, concatenate, pluralize
 from linux_utils.crypttab import parse_crypttab
 from linux_utils.fstab import find_mounted_filesystems
 from linux_utils.luks import cryptdisks_start
@@ -25,7 +25,7 @@ __version__ = '1.0'
 logger = VerboseLogger(__name__)
 
 
-def initialize_keys_device(image_file, mapper_name, mount_point, cleanup=None):
+def initialize_keys_device(image_file, mapper_name, mount_point, volumes=(), cleanup=None):
     """
     Initialize and activate the virtual keys device and use it to activate encrypted volumes.
 
@@ -36,6 +36,10 @@ def initialize_keys_device(image_file, mapper_name, mount_point, cleanup=None):
     :param mapper_name: The device mapper name for the virtual keys device (a
                         string).
     :param mount_point: The mount point for the virtual keys device (a string).
+    :param volumes: An iterable of strings that match match mapper names
+                    configured in /etc/crypttab. If given then only these
+                    volumes will be unlocked. By default it's empty which means
+                    all of the configured and available drives are unlocked.
     :param cleanup: :data:`True` to unmount and lock the virtual keys device
                     after use, :data:`False` to leave the device mounted or
                     :data:`None` to automatically figure out what the best
@@ -83,18 +87,24 @@ def initialize_keys_device(image_file, mapper_name, mount_point, cleanup=None):
             if not os.path.isdir(mount_point):
                 os.makedirs(mount_point)
             if os.path.ismount(mount_point):
-                logger.info("Virtual keys device already mounted ..")
+                logger.info("The virtual keys device is already mounted ..")
             else:
-                logger.info("Mounting virtual keys device ..")
+                logger.info("Mounting the virtual keys device ..")
                 execute('mount', mapper_device, mount_point)
             with finalizer('umount', mount_point, enabled=cleanup):
                 os.chmod(mount_point, 0o700)
+                if volumes:
+                    logger.verbose("Unlocking encrypted devices matching filter: %s", concatenate(map(repr, volumes)))
+                else:
+                    logger.verbose("Unlocking all configured and available encrypted devices ..")
                 # Create, install and use the keys to unlock the drives.
                 num_configured = 0
                 num_available = 0
                 num_unlocked = 0
                 for device in find_managed_drives(mount_point):
-                    if device.is_available:
+                    if volumes and device.target not in volumes:
+                        logger.verbose("Ignoring %s because it doesn't match the filter.", device.target)
+                    elif device.is_available:
                         status = activate_encrypted_drive(
                             mapper_name=device.target,
                             physical_device=device.source_device,

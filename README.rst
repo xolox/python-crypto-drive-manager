@@ -80,10 +80,16 @@ Usage
 .. inject_usage('crypto_drive_manager.cli')
 .. ]]]
 
-**Usage:** `crypto-drive-manager [OPTIONS]`
+**Usage:** `crypto-drive-manager [OPTIONS] [NAME, ..]`
 
 Safely, quickly and conveniently unlock an unlimited number of LUKS encrypted
 devices using a single pass phrase.
+
+By default all entries in /etc/crypttab that reference a key file located under
+the mount point of the encrypted disk with key files are unlocked (as needed).
+
+To unlock a subset of the configured devices you can pass one or more ``NAME``
+arguments that match the mapper name(s) configured in /etc/crypttab.
 
 **Supported options:**
 

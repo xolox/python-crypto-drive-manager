@@ -1,14 +1,20 @@
 # Command line interface for crypto-drive-manager.
 #
 # Author: Peter Odding <peter@peterodding.com>
-# Last Change: November 27, 2017
+# Last Change: January 17, 2018
 # URL: https://github.com/xolox/python-crypto-drive-manager
 
 """
-Usage: crypto-drive-manager [OPTIONS]
+Usage: crypto-drive-manager [OPTIONS] [NAME, ..]
 
 Safely, quickly and conveniently unlock an unlimited number of LUKS encrypted
 devices using a single pass phrase.
+
+By default all entries in /etc/crypttab that reference a key file located under
+the mount point of the encrypted disk with key files are unlocked (as needed).
+
+To unlock a subset of the configured devices you can pass one or more NAME
+arguments that match the mapper name(s) configured in /etc/crypttab.
 
 Supported options:
 
@@ -102,6 +108,7 @@ def main():
             image_file=image_file,
             mapper_name=mapper_name,
             mount_point=mount_point,
+            volumes=arguments,
         )
     except KeyboardInterrupt:
         logger.error("Interrupted by Control-C, terminating ..")
