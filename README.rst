@@ -87,9 +87,8 @@ devices using a single pass phrase.
 
 By default all entries in /etc/crypttab that reference a key file located under
 the mount point of the encrypted disk with key files are unlocked (as needed).
-
 To unlock a subset of the configured devices you can pass one or more ``NAME``
-arguments that match the mapper name(s) configured in /etc/crypttab.
+arguments that match mapper name(s) configured in /etc/crypttab.
 
 **Supported options:**
 
@@ -105,11 +104,62 @@ arguments that match the mapper name(s) configured in /etc/crypttab.
    '/dev/mapper/NAME' (defaults to 'encryption-keys')."
    "``-m``, ``--mount-point=PATH``","Set the pathname of the mount point for the encrypted disk with key files
    (defaults to '/mnt/keys')."
+   ``--install-systemd-workaround``,"Replace the systemd-cryptsetup-generator program with a wrapper that
+   removes the 'RequiresMountsFor' option from the generated configuration
+   files at /var/run/systemd/generator/\*.service.
+   
+   Refer to the readme for more details about how this works."
    "``-v``, ``--verbose``",Increase logging verbosity (can be repeated).
    "``-q``, ``--quiet``",Decrease logging verbosity (can be repeated).
    "``-h``, ``--help``",Show this message and exit.
 
 .. [[[end]]]
+
+Problems
+--------
+
+When I upgraded my personal server to Ubuntu 16.04 and rebooted the system I
+was immediately bitten by `systemd issue #3816`_: When any of the encrypted
+drives managed by `crypto-drive-manager` are affected by this issue then
+unmounting of the keys device will cause systemd to immediately unmount and
+lock those encrypted drives.
+
+My initial workaround for this issue (released in crypto-drive-manager 2.0) was
+to simply leave the virtual keys device unlocked and mounted, but of course
+this went straight against how `crypto-drive-manager` was originally designed
+and intended to work.
+
+In crypto-drive-manager 3.0 I implemented and released a real workaround:
+
+1. The command ``crypto-drive-manager --install-systemd-workaround`` replaces
+   ``/lib/systemd/system-generators/systemd-cryptsetup-generator`` with a
+   symbolic link to the `crypto-drive-manager` program. The original
+   generator program is renamed so that it remains accessible.
+
+2. When ``systemctl daemon-reload`` is run it calls `crypto-drive-manager`
+   by following the symbolic link (without realizing it of course).
+
+3. By checking the value of ``sys.argv[0]`` the `crypto-drive-manager`
+   program can determine whether it's being run by ``systemd``.
+
+4. In this case `crypto-drive-manager` will first run the original generator
+   program and then it will rewrite the generated service files located in
+   ``/var/run/systemd/generator`` to remove ``RequiresMountsFor`` fields.
+
+5. By the time ``systemd`` rereads its configuration files the
+   ``RequiresMountsFor`` fields have already been removed.
+
+6. Because ``crypto-drive-manager`` automatically detects the presence or
+   absence of problematic ``RequiresMountsFor`` fields it will detect its own
+   workaround and properly lock the virtual keys device after use.
+
+7. Profit! :-P
+
+To be honest all of this started as a thought experiment with me trying to
+verify my understanding of the problem and what would be involved to fix it.
+Once I realized that my (nasty! I know) workaround was actually effective I
+decided I might as well publish it. I do actually use this workaround on my
+personal server (for whatever that's worth).
 
 Contact
 -------
@@ -135,4 +185,5 @@ This software is licensed under the `MIT license`_.
 .. _per user site-packages directory: https://www.python.org/dev/peps/pep-0370/
 .. _peter@peterodding.com: mailto:peter@peterodding.com
 .. _PyPI: https://pypi.python.org/pypi/crypto-drive-manager
+.. _systemd issue #3816: https://github.com/systemd/systemd/issues/3816
 .. _virtual environments: http://docs.python-guide.org/en/latest/dev/virtualenvs/

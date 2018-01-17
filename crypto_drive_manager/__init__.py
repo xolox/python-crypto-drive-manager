@@ -1,7 +1,7 @@
 # Python API for crypto-drive-manager.
 #
 # Author: Peter Odding <peter@peterodding.com>
-# Last Change: January 17, 2018
+# Last Change: January 18, 2018
 # URL: https://github.com/xolox/python-crypto-drive-manager
 
 """Python API for `crypto-drive-manager`."""
@@ -18,7 +18,10 @@ from linux_utils.fstab import find_mounted_filesystems
 from linux_utils.luks import cryptdisks_start
 from verboselogs import VerboseLogger
 
-__version__ = '2.0'
+# Modules included in our package.
+from crypto_drive_manager.systemd import have_systemd_dependencies
+
+__version__ = '3.0'
 """Semi-standard module versioning."""
 
 # Initialize a logger for this module.
@@ -44,7 +47,7 @@ def initialize_keys_device(image_file, mapper_name, mount_point, volumes=(), cle
                     after use, :data:`False` to leave the device mounted or
                     :data:`None` to automatically figure out what the best
                     choice is (this is the default). See also
-                    :func:`have_systemd_dependencies()`.
+                    :func:`.have_systemd_dependencies()`.
     """
     first_run = not os.path.isfile(image_file)
     initialized = not first_run
@@ -130,47 +133,6 @@ def initialize_keys_device(image_file, mapper_name, mount_point, volumes=(), cle
             logger.warning("Initialization procedure was interrupted, deleting %s ..", image_file)
             if os.path.isfile(image_file):
                 os.unlink(image_file)
-
-
-def have_systemd_dependencies(mount_point):
-    """
-    Determine if any of the managed drives are affected by `systemd issue #3816`_.
-
-    :param mount_point: The mount point for the virtual keys device (a string).
-    :returns: :data:`True` if any of the encrypted drives managed by
-              `crypto-drive-manager` are affected by `systemd issue #3816`_,
-              :data:`False` if none of the managed drives are affected.
-
-    If any of the encrypted drives managed by `crypto-drive-manager` are
-    affected by `systemd issue #3816`_ then unmounting of the keys device will
-    cause systemd to immediately unmount and lock those encrypted drives. When
-    I first ran into this behavior it took me quite a lot of digging to figure
-    out what exactly was going on and I was not amused :-P.
-
-    Since then `crypto-drive-manager` has gained the ability to anticipate this
-    issue and work around it by leaving the virtual keys device unlocked and
-    mounted.
-
-    Of course this goes straight against how `crypto-drive-manager` was
-    originally designed and intended to work, but for now it will have
-    to do because I don't know of a better workaround :-(.
-
-    .. _systemd issue #3816: https://github.com/systemd/systemd/issues/3816
-    """
-    logger.verbose("Checking if we're affected by systemd issue #3816 ..")
-    if execute('which', 'systemctl', check=False, silent=True):
-        for device in find_managed_drives(mount_point):
-            output = execute(
-                'systemctl', 'show',
-                'systemd-cryptsetup@%s.service' % device.target,
-                capture=True, check=False, silent=True,
-            )
-            for line in output.splitlines():
-                key, _, value = line.partition('=')
-                if (key.strip() == 'RequiresMountsFor' and
-                        match_prefix(value.strip(), mount_point)):
-                    return True
-    return False
 
 
 def activate_encrypted_drive(mapper_name, physical_device, keys_directory, reset=False):

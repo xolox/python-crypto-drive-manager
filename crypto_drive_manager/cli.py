@@ -1,7 +1,7 @@
 # Command line interface for crypto-drive-manager.
 #
 # Author: Peter Odding <peter@peterodding.com>
-# Last Change: January 17, 2018
+# Last Change: January 18, 2018
 # URL: https://github.com/xolox/python-crypto-drive-manager
 
 """
@@ -12,9 +12,8 @@ devices using a single pass phrase.
 
 By default all entries in /etc/crypttab that reference a key file located under
 the mount point of the encrypted disk with key files are unlocked (as needed).
-
 To unlock a subset of the configured devices you can pass one or more NAME
-arguments that match the mapper name(s) configured in /etc/crypttab.
+arguments that match mapper name(s) configured in /etc/crypttab.
 
 Supported options:
 
@@ -33,6 +32,14 @@ Supported options:
 
     Set the pathname of the mount point for the encrypted disk with key files
     (defaults to '/mnt/keys').
+
+  --install-systemd-workaround
+
+    Replace the systemd-cryptsetup-generator program with a wrapper that
+    removes the 'RequiresMountsFor' option from the generated configuration
+    files at /var/run/systemd/generator/*.service.
+
+    Refer to the readme for more details about how this works.
 
   -v, --verbose
 
@@ -59,6 +66,11 @@ from humanfriendly.terminal import usage, warning
 
 # Modules included in our package.
 from crypto_drive_manager import initialize_keys_device
+from crypto_drive_manager.systemd import (
+    install_systemd_workaround,
+    systemd_workaround_requested,
+    update_systemd_services,
+)
 
 # Initialize a logger for this module.
 logger = logging.getLogger(__name__)
@@ -72,11 +84,13 @@ def main():
     image_file = '/root/encryption-keys.img'
     mapper_name = 'encryption-keys'
     mount_point = '/mnt/keys'
+    install_workaround = False
     # Parse the command line arguments.
     try:
         options, arguments = getopt.getopt(sys.argv[1:], 'i:n:m:vqh', [
             'image-file=', 'mapper-name=', 'mount-point=',
-            'verbose', 'quiet', 'help'
+            'install-systemd-workaround',
+            'verbose', 'quiet', 'help',
         ])
         for option, value in options:
             if option in ('-i', '--image-file'):
@@ -85,6 +99,8 @@ def main():
                 mapper_name = value
             elif option in ('-m', '--mount-point'):
                 mount_point = value
+            elif option == '--install-systemd-workaround':
+                install_workaround = True
             elif option in ('-v', '--verbose'):
                 coloredlogs.increase_verbosity()
             elif option in ('-q', '--quiet'):
@@ -102,17 +118,28 @@ def main():
     if os.getuid() != 0:
         warning("Error: Please run this command as root!")
         sys.exit(1)
-    # Initialize the keys device and use it to unlock all managed drives.
-    try:
-        initialize_keys_device(
-            image_file=image_file,
-            mapper_name=mapper_name,
-            mount_point=mount_point,
-            volumes=arguments,
-        )
-    except KeyboardInterrupt:
-        logger.error("Interrupted by Control-C, terminating ..")
-        sys.exit(1)
-    except Exception:
-        logger.exception("Terminating due to unexpected exception!")
-        sys.exit(1)
+    # Decide if the systemd workaround is being executed based on sys.argv[0].
+    if systemd_workaround_requested():
+        update_systemd_services()
+        # In this case none of the other code should run.
+        return
+    # Check if the operator wants to install the systemd workaround.
+    if install_workaround:
+        install_systemd_workaround()
+    # Initialize the keys device and use it to unlock the managed drives?
+    # Only if we didn't just install the systemd workaround OR the operator
+    # requested to unlock specific drives.
+    if (not install_workaround) or arguments:
+        try:
+            initialize_keys_device(
+                image_file=image_file,
+                mapper_name=mapper_name,
+                mount_point=mount_point,
+                volumes=arguments,
+            )
+        except KeyboardInterrupt:
+            logger.error("Interrupted by Control-C, terminating ..")
+            sys.exit(1)
+        except Exception:
+            logger.exception("Terminating due to unexpected exception!")
+            sys.exit(1)
