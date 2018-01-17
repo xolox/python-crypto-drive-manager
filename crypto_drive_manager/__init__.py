@@ -1,12 +1,13 @@
 # Python API for crypto-drive-manager.
 #
 # Author: Peter Odding <peter@peterodding.com>
-# Last Change: January 5, 2018
+# Last Change: January 17, 2018
 # URL: https://github.com/xolox/python-crypto-drive-manager
 
 """Python API for `crypto-drive-manager`."""
 
 # Standard library modules.
+import enum
 import os
 
 # External dependencies.
@@ -79,23 +80,39 @@ def initialize_keys_device(image_file, mapper_name, mount_point, cleanup=None):
                 execute('mkfs.ext4', mapper_device)
                 initialized = True
             # Mount the virtual keys device.
-            logger.info("Mounting virtual keys device ..")
             if not os.path.isdir(mount_point):
                 os.makedirs(mount_point)
-            if not os.path.ismount(mount_point):
+            if os.path.ismount(mount_point):
+                logger.info("Virtual keys device already mounted ..")
+            else:
+                logger.info("Mounting virtual keys device ..")
                 execute('mount', mapper_device, mount_point)
             with finalizer('umount', mount_point, enabled=cleanup):
                 os.chmod(mount_point, 0o700)
                 # Create, install and use the keys to unlock the drives.
+                num_configured = 0
+                num_available = 0
                 num_unlocked = 0
                 for device in find_managed_drives(mount_point):
-                    if device.is_available and activate_encrypted_drive(
+                    if device.is_available:
+                        status = activate_encrypted_drive(
                             mapper_name=device.target,
                             physical_device=device.source_device,
                             keys_directory=mount_point,
-                            reset=first_run):
-                        num_unlocked += 1
-                logger.info("Unlocked %s.", pluralize(num_unlocked, "encrypted device"))
+                            reset=first_run,
+                        )
+                        if status & DriveStatus.UNLOCKED:
+                            num_unlocked += 1
+                        num_available += 1
+                    num_configured += 1
+                if num_unlocked > 0:
+                    logger.success("Unlocked %s.", pluralize(num_unlocked, "encrypted device"))
+                elif num_available > 0:
+                    logger.info("Nothing to do! (%s already unlocked)", pluralize(num_available, "encrypted device"))
+                elif num_configured > 0:
+                    logger.info("Nothing to do! (no encrypted devices available)")
+                else:
+                    logger.info("Nothing to do! (no encrypted drives configured)")
         if cleanup:
             logger.verbose("Virtual keys device was accessible for %s.", unlocked_timer)
     finally:
@@ -130,6 +147,7 @@ def have_systemd_dependencies(mount_point):
 
     .. _systemd issue #3816: https://github.com/systemd/systemd/issues/3816
     """
+    logger.verbose("Checking if we're affected by systemd issue #3816 ..")
     if execute('which', 'systemctl', check=False, silent=True):
         for device in find_managed_drives(mount_point):
             output = execute(
@@ -157,7 +175,12 @@ def activate_encrypted_drive(mapper_name, physical_device, keys_directory, reset
                            string).
     :param reset: If ``True`` the key file for the encrypted volume will be
                   regenerated (overwriting any previous key).
+    :return: An integer created by combining members of the
+             :class:`DriveStatus` enumeration using bitwise or.
+    :raises: :exc:`~executor.ExternalCommandFailed` when a program
+             like ``cryptsetup`` or ``mount`` reports an error.
     """
+    status = DriveStatus.DEFAULT
     mapper_device = '/dev/mapper/%s' % mapper_name
     device_exists = os.path.exists(mapper_device)
     if reset or not device_exists:
@@ -167,20 +190,17 @@ def activate_encrypted_drive(mapper_name, physical_device, keys_directory, reset
             execute('dd', 'if=/dev/urandom', 'of=%s' % key_file, 'bs=4', 'count=1024')
             logger.info("Installing %s on %s ..", key_file, physical_device)
             execute('cryptsetup', 'luksAddKey', physical_device, key_file)
+            status |= DriveStatus.INITIALIZED
         os.chmod(key_file, 0o400)
         if not device_exists:
             logger.info("Unlocking encrypted drive %s ..", mapper_name)
-            try:
-                cryptdisks_start(mapper_name)
-            except Exception as e:
-                logger.warning("Failed to unlock encrypted drive %s! (%s)", mapper_name, e)
-                return False
+            cryptdisks_start(mapper_name)
+            status |= DriveStatus.UNLOCKED
     if drive_needs_mounting(mapper_device):
         logger.info("Mounting %s ..", mapper_device)
-        if not execute('mount', mapper_device, check=False):
-            logger.warning("Failed to mount %s!", mapper_device)
-            return False
-    return True
+        execute('mount', mapper_device)
+        status |= DriveStatus.MOUNTED
+    return status
 
 
 def find_managed_drives(keys_directory):
@@ -258,3 +278,32 @@ class finalizer(object):
         """Unconditionally run the previously specified external command."""
         if self.enabled:
             execute(*self.args, **self.kw)
+
+
+class DriveStatus(enum.IntEnum):
+
+    """
+    Enumeration for the actions taken by :func:`activate_encrypted_drive()`.
+
+    The values of this enumeration are intended to be combined using bitwise
+    operators exactly like how enum.Flag_ works since Python 3.6. To remain
+    compatible with older Python versions `crypto-drive-manager` depends on
+    the enum34_ package, which doesn't implement enum.Flag_. This explains
+    why enum.Enum_ is used instead.
+
+    .. _enum.Enum: https://docs.python.org/3/library/enum.html#creating-an-enum
+    .. _enum.Flag: https://docs.python.org/3/library/enum.html#flag
+    .. _enum34: https://pypi.python.org/pypi/enum34
+    """
+
+    DEFAULT = 0
+    """The default, empty status (nothing was done)."""
+
+    INITIALIZED = 1
+    """A key file was generated and the key was installed on the encrypted drive."""
+
+    UNLOCKED = 2
+    """The encrypted drive was unlocked as configured in ``/etc/crypttab``."""
+
+    MOUNTED = 4
+    """The encrypted drive was mounted as configured in ``/etc/fstab``."""
