@@ -1,10 +1,14 @@
 # Workaround for systemd incompatibility.
 #
 # Author: Peter Odding <peter@peterodding.com>
-# Last Change: January 17, 2018
+# Last Change: February 12, 2018
 # URL: https://github.com/xolox/python-crypto-drive-manager
 
-"""Workaround for an incompatibility between `crypto-drive-manager` and system."""
+"""
+Workarounds for `systemd issue #3816`_.
+
+.. _systemd issue #3816: https://github.com/systemd/systemd/issues/3816
+"""
 
 # Standard library modules.
 import glob
@@ -58,8 +62,6 @@ def have_systemd_dependencies(mount_point):
     Of course this goes straight against how `crypto-drive-manager` was
     originally designed and intended to work, but for now it will have
     to do because I don't know of a better workaround :-(.
-
-    .. _systemd issue #3816: https://github.com/systemd/systemd/issues/3816
     """
     from crypto_drive_manager import find_managed_drives, match_prefix
     logger.verbose("Checking if we're affected by systemd issue #3816 ..")
